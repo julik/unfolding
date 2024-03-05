@@ -7,7 +7,7 @@ class CacheStore
     @c[k]
   end
 
-  def get_multi(keys)
+  def read_multi(keys)
     keys.map {|k| @c[k] }
   end
 

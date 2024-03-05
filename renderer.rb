@@ -1,6 +1,7 @@
 require_relative "lib/node.rb"
 require_relative "lib/cache_store.rb"
 require_relative "lib/depth_first_renderer.rb"
+require_relative "lib/batched_depth_first_renderer.rb"
 require_relative "lib/breadth_first_renderer.rb"
 require_relative "lib/indented_print.rb"
 
@@ -9,7 +10,7 @@ def render_with(renderer)
   cache = CacheStore.new
   topic = Node.new("Topic1", [
     Node.new("Post1", [Node.new("Avatar1")]),
-    Node.new("Post2", [Node.new("Avatar2"), Node.new("Avatar4")]),
+    Node.new("Post2", [Node.new("Avatar2"), Node.new("Avatar4"), Node.new("Avatar15")]),
     Node.new("Post3", [Node.new("Avatar3")])
   ])
 
@@ -29,6 +30,8 @@ end
 #warn "= Depth-first"
 #render_with(DepthFirstRenderer.new)
 
+#warn "= Batched-Depth-first"
+#render_with(BatchedDepthFirstRenderer.new)
+
 warn "= Breadth-first"
 render_with(BreadthFirstRenderer.new)
-
