@@ -5,33 +5,57 @@ require_relative "lib/batched_depth_first_renderer.rb"
 require_relative "lib/breadth_first_renderer.rb"
 require_relative "lib/indented_print.rb"
 
-
 def render_with(renderer)
-  cache = CacheStore.new
-  topic = Node.new("Topic1", [
-    Node.new("Post1", [Node.new("Avatar1")]),
-    Node.new("Post2", [Node.new("Avatar2"), Node.new("Avatar4"), Node.new("Avatar15")]),
-    Node.new("Post3", [Node.new("Avatar3")])
+  rng = Random.new(42)
+  root_node = Node.new("Forum", [
+    Node.new("Header"),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+    Node.new("Thread", [
+      Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+      Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+      Node.new("Thread", [
+        Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+        Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+      ])
+    ]),
+    Node.new("Footer"),
   ])
 
-  warn "== First render (cold cache)"
-  indented_print(renderer.node_to_fragments(topic, cache))
+  warn "== #{renderer}:"
+  
+  cache = CacheStore.new
 
-  # Note that since Ruby Hashes are now insertion-ordered, we will
-  # see keys in the order they got written to the cache. This reflects the tree
-  # traversal order.
-  warn cache.keys.inspect
-  cache.delete("Post1")
+  r = cache.measure {
+    renderer.node_to_fragments(root_node, cache)
+  }
+  warn "== First render (cold cache) required #{r} roundtrips"
 
-  warn "\n== Second render (warm cache)"
-  indented_print(renderer.node_to_fragments(topic, cache))
+  # Evict some keys
+  cache.evict_matching(/^Forum/)
+  cache.evict_ratio(0.5, random: rng)
+
+  r = cache.measure {
+    renderer.node_to_fragments(root_node, cache)
+  }
+  warn "== Second render (half of keys evicted) required #{r} roundtrips"
+
+  cache.evict_matching(/^Forum/)
+
+  r = cache.measure {
+    renderer.node_to_fragments(root_node, cache)
+  }
+  warn "== Third render (no eviction) required #{r} roundtrips"
+  warn "\n"
 end
 
-#warn "= Depth-first"
-#render_with(DepthFirstRenderer.new)
-
-#warn "= Batched-Depth-first"
-#render_with(BatchedDepthFirstRenderer.new)
-
-warn "= Breadth-first"
+render_with(DepthFirstRenderer.new)
+render_with(BatchedDepthFirstRenderer.new)
 render_with(BreadthFirstRenderer.new)

@@ -3,8 +3,12 @@ require "set"
 class BreadthFirstRenderer
   class Hydrator
     def hydrate(tree_of_keys_and_nils, using_cache_store)
+      # Converts a tree of [nil, "k1", ["k2", nil]] to ["k1", "k2"]
       cache_keys = collect_keys(tree_of_keys_and_nils)
+      # Retrieves cached data for ["k1", "k2"], which will be ["data1", nil] (nil if cache miss)
       cached_values = using_cache_store.read_multi(cache_keys)
+
+      # Merges ["data1", nil] into [nil, "k1", ["k2", nil]] to return a tree of [nil, "data1", [nil, nil]]
       with_replacements_from(tree_of_keys_and_nils, cached_values)
     end
 
@@ -45,6 +49,7 @@ class BreadthFirstRenderer
       @phase = WAITING_FOR_CACHE
       @children = nil
       @fragments = []
+      @rendered_from_cache = false
     end
 
     def collect_dependent_cache_keys
@@ -66,6 +71,7 @@ class BreadthFirstRenderer
         if value_for_self_or_children
           @fragments = value_for_self_or_children
           @phase = DONE
+          @rendered_from_cache = true
         else
           debug "#{self} had cache miss, will start unfolding children"
           # We need to "unfold" the child nodes, since we are going to be rendering
@@ -78,9 +84,19 @@ class BreadthFirstRenderer
         end
         # If all the children have received their values, we can render
         render! if @children.all?(&:done?)
+        @phase = DONE
       when DONE
         nil # Nothing to do
       end
+    end
+
+    def collect_rendered_caches(into = {}) #-> Hash
+      if done? && @node.cache_key && !@rendered_from_cache
+        into[@node.cache_key] = @fragments
+      else
+        (@children || []).map {|c| c.collect_rendered_caches(into) }
+      end
+      into
     end
 
     def render!
@@ -94,8 +110,6 @@ class BreadthFirstRenderer
       else
         ["<#{@node.id} />"]
       end
-
-      @phase = DONE
     end
 
     def fragments
@@ -120,11 +134,13 @@ class BreadthFirstRenderer
     hydrator = Hydrator.new
 
     loop do |n|
-      warn "=== PASS #{n}"
       tree_of_keys = root_node.collect_dependent_cache_keys
       tree_of_values = hydrator.hydrate(tree_of_keys, cache_store)
-      warn "Cache: #{tree_of_keys.inspect} -> #{tree_of_values.inspect}"
       root_node.pushdown_values_from_cache(tree_of_values)
+
+      keys_to_values = root_node.collect_rendered_caches
+      cache_store.write_multi(keys_to_values) if keys_to_values.any?
+
       break root_node.fragments if root_node.done?
     end
   end

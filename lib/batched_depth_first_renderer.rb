@@ -11,11 +11,13 @@ class BatchedDepthFirstRenderer
         if maybe_cached
           maybe_cached
         else
-          child_fragments = node_to_fragments(child, cache_store)
-          cache_store.set(child.cache_key, child_fragments)
-          child_fragments
+          node_to_fragments(child, cache_store)
         end
       end
+
+      multi_set = node.children.map(&:cache_key).zip(child_fragments).to_h
+      cache_store.write_multi(multi_set)
+
       [
           "<#{node.id}>",
           child_fragments,
