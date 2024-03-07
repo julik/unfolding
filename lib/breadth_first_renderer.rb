@@ -84,7 +84,7 @@ class BreadthFirstRenderer
         @node.cache_key
       elsif @state.unfolding?
         debug "Still unfolding, returning dependent child keys"
-        cks = @children.map(&:collect_dependent_cache_keys)
+        @children.map(&:collect_dependent_cache_keys)
       else
         nil # Request a "hole" which will not be fetched from the cache
       end
