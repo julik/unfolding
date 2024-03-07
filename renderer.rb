@@ -23,7 +23,10 @@ def render_with(renderer)
       Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
       Node.new("Thread", [
         Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-        Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+        Node.new("Thread", [
+          Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+          Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
+        ]),
       ])
     ]),
     Node.new("Footer"),
@@ -56,6 +59,6 @@ def render_with(renderer)
   warn "\n"
 end
 
-render_with(DepthFirstRenderer.new)
-render_with(BatchedDepthFirstRenderer.new)
+# render_with(DepthFirstRenderer.new)
+# render_with(BatchedDepthFirstRenderer.new)
 render_with(BreadthFirstRenderer.new)

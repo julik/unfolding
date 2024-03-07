@@ -6,6 +6,7 @@ class BreadthFirstRenderer
       # Converts a tree of [nil, "k1", ["k2", nil]] to ["k1", "k2"]
       cache_keys = collect_keys(tree_of_keys_and_nils)
       # Retrieves cached data for ["k1", "k2"], which will be ["data1", nil] (nil if cache miss)
+      warn cache_keys.inspect
       cached_values = using_cache_store.read_multi(cache_keys)
 
       # Merges ["data1", nil] into [nil, "k1", ["k2", nil]] to return a tree of [nil, "data1", [nil, nil]]
@@ -69,11 +70,12 @@ class BreadthFirstRenderer
       case @phase
       when WAITING_FOR_CACHE
         if value_for_self_or_children
+          debug "#{self} had a cache hit"
           @fragments = value_for_self_or_children
           @phase = DONE
           @rendered_from_cache = true
         else
-          debug "#{self} had cache miss, will start unfolding children"
+          debug "#{self} had a cache miss, will start unfolding children"
           # We need to "unfold" the child nodes, since we are going to be rendering
           @phase = UNFOLDING_CHILDREN
           @children = @node.children.map {|n| self.class.new(n) }
@@ -126,6 +128,7 @@ class BreadthFirstRenderer
     end
 
     def debug(str)
+      warn str
     end
   end
 
@@ -139,6 +142,7 @@ class BreadthFirstRenderer
       root_node.pushdown_values_from_cache(tree_of_values)
 
       keys_to_values = root_node.collect_rendered_caches
+      warn keys_to_values.inspect
       cache_store.write_multi(keys_to_values) if keys_to_values.any?
 
       break root_node.fragments if root_node.done?
