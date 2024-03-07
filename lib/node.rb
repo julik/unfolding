@@ -1,11 +1,29 @@
 require "base64"
 
 class Node
-  attr_reader :id, :children
-  def initialize(name, children=[], cached: true)
+  class Builder
+    def initialize
+      @children = []
+    end
+
+    def node(name)
+      previous_children, @children = @children, []
+
+      yield if block_given?
+
+      Node.new(name, @children).tap do |this_node|
+        previous_children << this_node
+        @children = previous_children
+      end
+    end
+  end
+
+  attr_reader :name, :id, :children
+  ID_DISPENCER = (0..).each
+
+  def initialize(name, children=[])
     @name = name
-    @cached = true
-    @id = random_id
+    @id = ID_DISPENCER.next
     @children = children
   end
 
@@ -13,12 +31,7 @@ class Node
     n.times.map { new(name) }
   end
 
-  def random_id
-    Base64.strict_encode64(Random.bytes(4))
-  end
-
   def cache_key
-    return unless @cached
     "#{@name}/#{@id}"
   end
 end

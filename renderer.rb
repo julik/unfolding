@@ -7,30 +7,31 @@ require_relative "lib/indented_print.rb"
 
 def render_with(renderer)
   rng = Random.new(42)
-  root_node = Node.new("Forum", [
-    Node.new("Header"),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-    Node.new("Thread", [
-      Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-      Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-      Node.new("Thread", [
-        Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-        Node.new("Thread", [
-          Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-          Node.new("Thread", Node.gen_n(rng.rand(120..210), "Post")),
-        ]),
-      ])
-    ]),
-    Node.new("Footer"),
-  ])
+  b = Node::Builder.new
+  root_node = b.node("Forum") do
+    b.node("Header")
+    b.node("Thread") do
+      b.node("Thread") do
+        b.node("Thread") do
+          320.times { b.node("Post") }
+        end
+        b.node("Thread") do
+          620.times { b.node("Post") }
+        end
+        b.node("Thread") do
+          640.times { b.node("Post") }
+        end
+        b.node("Thread") do
+          240.times do
+            b.node("Post") do
+              b.node("Avatar")
+            end
+          end
+        end
+      end
+      b.node("Thread")
+    end
+  end
 
   warn "== #{renderer}:"
   
@@ -41,6 +42,12 @@ def render_with(renderer)
   }
   warn "== First render (cold cache) required #{r} roundtrips"
 
+  cache.evict_matching(/^Forum/)
+  r = cache.measure {
+    renderer.node_to_fragments(root_node, cache)
+  }
+  warn "== Second render (warm cache) required #{r} roundtrips"
+
   # Evict some keys
   cache.evict_matching(/^Forum/)
   cache.evict_ratio(0.5, random: rng)
@@ -48,17 +55,17 @@ def render_with(renderer)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Second render (half of keys evicted) required #{r} roundtrips"
+  warn "== Third render (half of keys evicted) required #{r} roundtrips"
 
   cache.evict_matching(/^Forum/)
 
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Third render (no eviction) required #{r} roundtrips"
+  warn "== Fourth render (no eviction) required #{r} roundtrips"
   warn "\n"
 end
 
-# render_with(DepthFirstRenderer.new)
-# render_with(BatchedDepthFirstRenderer.new)
+render_with(DepthFirstRenderer.new)
+render_with(BatchedDepthFirstRenderer.new)
 render_with(BreadthFirstRenderer.new)

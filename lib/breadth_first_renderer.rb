@@ -6,7 +6,6 @@ class BreadthFirstRenderer
       # Converts a tree of [nil, "k1", ["k2", nil]] to ["k1", "k2"]
       cache_keys = collect_keys(tree_of_keys_and_nils)
       # Retrieves cached data for ["k1", "k2"], which will be ["data1", nil] (nil if cache miss)
-      warn cache_keys.inspect
       cached_values = using_cache_store.read_multi(cache_keys)
 
       # Merges ["data1", nil] into [nil, "k1", ["k2", nil]] to return a tree of [nil, "data1", [nil, nil]]
@@ -39,96 +38,126 @@ class BreadthFirstRenderer
     end
   end
 
-  class RenderNode
-    WAITING_FOR_CACHE = :opaque
-    UNFOLDING_CHILDREN = :unfolding
-    RENDERING = :rendering
-    DONE = :done
+  class RenderNodeState
+    PERMITTED_TRANSITIONS = [
+      [:folded, :unfolding],
+      [:folded, :done],
+      [:unfolding, :rendering],
+      [:rendering, :done],
+    ]
 
+    def initialize
+      @state = :folded
+    end
+
+    def advance_or_stay_in(state)
+      return if @state == state
+      advance_to(state)
+    end
+
+    def advance_to(state)
+      raise "Cannot transition #{@state} -> #{state}" unless PERMITTED_TRANSITIONS.include?([@state, state])
+      @state = state
+    end
+
+    def to_s
+      "S(#{@state.inspect})"
+    end
+
+    states = PERMITTED_TRANSITIONS.flatten.uniq
+    states.each do |state|
+      define_method("#{state}?") { @state == state }
+    end
+  end
+
+  class RenderNode
     def initialize(node)
+      @state = RenderNodeState.new
       @node = node
-      @phase = WAITING_FOR_CACHE
       @children = nil
       @fragments = []
-      @rendered_from_cache = false
     end
 
     def collect_dependent_cache_keys
-      case @phase
-      when WAITING_FOR_CACHE
-        debug "#{self} is returning its cache key"
+      if @state.folded?
+        debug "Returning cache key for self"
         @node.cache_key
-      when UNFOLDING_CHILDREN
-        debug "#{self} is unfolding children and will push up child keys"
-        @children.map(&:collect_dependent_cache_keys)
-      when DONE
+      elsif @state.unfolding?
+        debug "Still unfolding, returning dependent child keys"
+        cks = @children.map(&:collect_dependent_cache_keys)
+      else
         nil # Request a "hole" which will not be fetched from the cache
       end
     end
 
-    def pushdown_values_from_cache(value_for_self_or_children)
-      case @phase
-      when WAITING_FOR_CACHE
-        if value_for_self_or_children
-          debug "#{self} had a cache hit"
-          @fragments = value_for_self_or_children
-          @phase = DONE
-          @rendered_from_cache = true
+    def pushdown_values_from_cache(value_from_cache)
+      if @state.done?
+        debug "Received cache values but already done"
+      elsif @state.folded?
+        if value_from_cache
+          debug "Сache hit (received #{value_from_cache.inspect})"
+          @fragments = value_from_cache
+          @state.advance_to(:done)
         else
-          debug "#{self} had a cache miss, will start unfolding children"
+          debug "Сache miss (received #{value_from_cache.inspect})"
           # We need to "unfold" the child nodes, since we are going to be rendering
-          @phase = UNFOLDING_CHILDREN
+          @state.advance_or_stay_in(:unfolding)
           @children = @node.children.map {|n| self.class.new(n) }
         end
-      when UNFOLDING_CHILDREN
-        @children.zip(value_for_self_or_children).each do |child_render_node, value_for_child|
+      elsif @state.unfolding?
+        debug "Received cache values for children: #{value_from_cache}"
+
+        @children.zip(value_from_cache).each do |child_render_node, value_for_child|
           child_render_node.pushdown_values_from_cache(value_for_child)
         end
-        # If all the children have received their values, we can render
-        render! if @children.all?(&:done?)
-        @phase = DONE
-      when DONE
-        nil # Nothing to do
+        return unless @children.all?(&:done?)
+
+        debug "All children are done (or leaf node), rendering"
+        render!
+      else
+        raise "Should not receive pushdown_values_from_cache() while #{@state}"
       end
     end
 
-    def collect_rendered_caches(into = {}) #-> Hash
-      if done? && @node.cache_key && !@rendered_from_cache
-        into[@node.cache_key] = @fragments
-      else
-        (@children || []).map {|c| c.collect_rendered_caches(into) }
+    def collect_rendered_caches(into_hash)
+      if @state.done?
+        into_hash[@node.cache_key] = @fragments.dup
+      elsif @state.unfolding?
+        @children.map {|c| c.collect_rendered_caches(into_hash) }
       end
-      into
+
+      nil
     end
 
     def render!
-      debug "#{self} is rendering"
+      @state.advance_to(:rendering)
       @fragments = if @children.any?
         [
-          "<#{@node.id}>",
+          "<#{@node.name} id=#{@node.id}>",
           @children.map(&:fragments),
-          "</#{@node.id}>"
+          "</#{@node.name}>"
         ]
       else
-        ["<#{@node.id} />"]
+        ["<#{@node.name} id=#{@node.id} />"]
       end
+      @state.advance_to(:done)
     end
 
     def fragments
-      raise "Fragments requested, but #{self} is in still in the #{@phase} phase" unless @phase == DONE
+      raise "Fragments not available yet (still #{@state})" unless @state.done?
       @fragments
     end
 
     def done?
-      @phase == DONE
+      @state.done?
     end
 
     def to_s
-      "RN(#{@node.cache_key}):#{@phase}>"
+      "RN(#{@node.cache_key} #{@state}):>"
     end
 
     def debug(str)
-      warn str
+      # warn "#{self}: #{str}"
     end
   end
 
@@ -141,11 +170,11 @@ class BreadthFirstRenderer
       tree_of_values = hydrator.hydrate(tree_of_keys, cache_store)
       root_node.pushdown_values_from_cache(tree_of_values)
 
-      keys_to_values = root_node.collect_rendered_caches
-      warn keys_to_values.inspect
-      cache_store.write_multi(keys_to_values) if keys_to_values.any?
+      keys_to_values_for_cache = {}
+      root_node.collect_rendered_caches(keys_to_values_for_cache)
+      cache_store.write_multi(keys_to_values_for_cache) if keys_to_values_for_cache.any?
 
-      break root_node.fragments if root_node.done?
+      return root_node.fragments if root_node.done?
     end
   end
 end

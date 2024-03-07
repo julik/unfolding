@@ -3,7 +3,7 @@ require "stringio"
 class DepthFirstRenderer
   def node_to_fragments(node, cache_store)
     if node.children.empty?
-      ["<#{node.id} />"]
+      ["<#{node.name} id=#{node.id} />"]
     else
       child_fragments = node.children.map do |child|
         if (cached = cache_store.read(child.cache_key))
@@ -15,9 +15,9 @@ class DepthFirstRenderer
         end
       end
       [
-          "<#{node.id}>",
+          "<#{node.name} id=#{node.id}>",
           child_fragments,
-          "</#{node.id}>"
+          "</#{node.name}>"
       ]
     end
   end
