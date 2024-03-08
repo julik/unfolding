@@ -101,7 +101,7 @@ class BreadthFirstRenderer
         else
           debug "Сache miss (received #{value_from_cache.inspect})"
           # We need to "unfold" the child nodes, since we are going to be rendering
-          @state.advance_or_stay_in(:unfolding)
+          @state.advance_to(:unfolding)
           @children = @node.children.map {|n| self.class.new(n) }
         end
       elsif @state.unfolding?

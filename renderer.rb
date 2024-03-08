@@ -40,13 +40,13 @@ def render_with(renderer)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== First render (cold cache) required #{r} roundtrips"
+  warn "== First render (cold cache) required #{r} roundtrips, cache state #{cache}"
 
   cache.evict_matching(/^Forum/)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Second render (warm cache) required #{r} roundtrips"
+  warn "== Second render (warm cache) required #{r} roundtrips, cache state #{cache}"
 
   # Evict some keys
   cache.evict_matching(/^Forum/)
@@ -55,17 +55,19 @@ def render_with(renderer)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Third render (half of keys evicted) required #{r} roundtrips"
+  warn "== Third render (half of keys evicted) required #{r} roundtrips, cache state #{cache}"
 
   cache.evict_matching(/^Forum/)
 
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Fourth render (no eviction) required #{r} roundtrips"
+  warn "== Fourth render (no eviction) required #{r} roundtrips, cache state #{cache}"
   warn "\n"
 end
 
-render_with(DepthFirstRenderer.new)
-render_with(BatchedDepthFirstRenderer.new)
-render_with(BreadthFirstRenderer.new)
+if __FILE__ == $0
+  render_with(DepthFirstRenderer.new)
+  render_with(BatchedDepthFirstRenderer.new)
+  render_with(BreadthFirstRenderer.new)
+end

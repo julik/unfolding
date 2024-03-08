@@ -48,4 +48,14 @@ class CacheStore
   def delete(key)
     @c.delete(key)
   end
+
+  def key_count
+    @c.length
+  end
+
+  def inspect
+    "<CacheStore with #{@c.length} keys>"
+  end
+
+  alias_method :to_s, :inspect
 end
