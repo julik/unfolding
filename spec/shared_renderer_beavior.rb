@@ -23,7 +23,7 @@ RSpec.shared_examples "a renderer" do
   end
 
   it "provides same output as DepthFirstRenderer" do
-    next if subject.is_a?(DepthFirstRenderer)
+    skip("No point testing DepthFirstRenderer against itself") if subject.is_a?(DepthFirstRenderer)
 
     cache1 = CacheStore.new
     ref_output = DepthFirstRenderer.new.node_to_fragments(root_node, cache1)
