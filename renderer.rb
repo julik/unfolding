@@ -1,9 +1,9 @@
-require_relative "lib/node.rb"
-require_relative "lib/cache_store.rb"
-require_relative "lib/depth_first_renderer.rb"
-require_relative "lib/batched_depth_first_renderer.rb"
-require_relative "lib/breadth_first_renderer.rb"
-require_relative "lib/indented_print.rb"
+require_relative "lib/node"
+require_relative "lib/cache_store"
+require_relative "lib/depth_first_renderer"
+require_relative "lib/batched_depth_first_renderer"
+require_relative "lib/breadth_first_renderer"
+require_relative "lib/indented_print"
 
 def render_with(renderer)
   rng = Random.new(42)
@@ -34,7 +34,7 @@ def render_with(renderer)
   end
 
   warn "== #{renderer}:"
-  
+
   cache = CacheStore.new
 
   r = cache.measure {

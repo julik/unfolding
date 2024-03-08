@@ -43,7 +43,7 @@ class BreadthFirstRenderer
       [:folded, :unfolding],
       [:folded, :done],
       [:unfolding, :rendering],
-      [:rendering, :done],
+      [:rendering, :done]
     ]
 
     def initialize
@@ -66,7 +66,7 @@ class BreadthFirstRenderer
 
     states = PERMITTED_TRANSITIONS.flatten.uniq
     states.each do |state|
-      define_method("#{state}?") { @state == state }
+      define_method(:"#{state}?") { @state == state }
     end
   end
 
@@ -85,8 +85,6 @@ class BreadthFirstRenderer
       elsif @state.unfolding?
         debug "Still unfolding, returning dependent child keys"
         @children.map(&:collect_dependent_cache_keys)
-      else
-        nil # Request a "hole" which will not be fetched from the cache
       end
     end
 
@@ -102,7 +100,7 @@ class BreadthFirstRenderer
           debug "Сache miss (received #{value_from_cache.inspect})"
           # We need to "unfold" the child nodes, since we are going to be rendering
           @state.advance_to(:unfolding)
-          @children = @node.children.map {|n| self.class.new(n) }
+          @children = @node.children.map { |n| self.class.new(n) }
         end
       elsif @state.unfolding?
         debug "Received cache values for children: #{value_from_cache}"
@@ -123,7 +121,7 @@ class BreadthFirstRenderer
       if @state.done?
         into_hash[@node.cache_key] = @fragments.dup
       elsif @state.unfolding?
-        @children.map {|c| c.collect_rendered_caches(into_hash) }
+        @children.map { |c| c.collect_rendered_caches(into_hash) }
       end
 
       nil

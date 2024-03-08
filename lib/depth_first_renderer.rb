@@ -15,9 +15,9 @@ class DepthFirstRenderer
         end
       end
       [
-          "<#{node.name} id=#{node.id}>",
-          child_fragments,
-          "</#{node.name}>"
+        "<#{node.name} id=#{node.id}>",
+        child_fragments,
+        "</#{node.name}>"
       ]
     end
   end

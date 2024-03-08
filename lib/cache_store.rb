@@ -13,7 +13,7 @@ class CacheStore
 
   def read_multi(keys)
     @roundtrips += 1
-    keys.map {|k| @c[k] }
+    keys.map { |k| @c[k] }
   end
 
   def write(k, v)

@@ -29,7 +29,7 @@ RSpec.shared_examples "a renderer" do
 
     cache1 = CacheStore.new
     ref_output = DepthFirstRenderer.new.node_to_fragments(root_node, cache1)
-    
+
     cache2 = CacheStore.new
     output = subject.node_to_fragments(root_node, cache2)
 

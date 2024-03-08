@@ -21,7 +21,7 @@ class Node
   attr_reader :name, :id, :children
   ID_DISPENCER = (0..).each
 
-  def initialize(name, children=[])
+  def initialize(name, children = [])
     @name = name
     @id = ID_DISPENCER.next
     @children = children
