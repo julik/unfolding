@@ -5,7 +5,9 @@ RSpec.shared_examples "a renderer" do
       b.node("Child")
       b.node("Child") do
         b.node("Grandchild")
-        b.node("Grandchild")
+        b.node("Grandchild") do
+          b.node("Grandgrandchild")
+        end
         b.node("Grandchild")
       end
     end
