@@ -15,7 +15,7 @@ RSpec.shared_examples "a renderer" do
 
   it "should output the same content on repeated renders" do
     cache = CacheStore.new
-    render_outputs = 4.times.map do
+    render_outputs = 20.times.map do
       subject.node_to_fragments(root_node, cache)
     end
 
