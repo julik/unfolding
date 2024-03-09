@@ -38,6 +38,9 @@ class BreadthFirstRenderer
     end
   end
 
+  # It is very easy to make a mistake with state transitions, so a good idea
+  # is to have a state machine which answers to methods and also prevents incorrect
+  # state transitions altogether
   class RenderNodeState
     PERMITTED_TRANSITIONS = [
       [:folded, :unfolding],
@@ -98,7 +101,8 @@ class BreadthFirstRenderer
           @state.advance_to(:done)
         else
           debug "Сache miss (received #{value_from_cache.inspect})"
-          # We need to "unfold" the child nodes, since we are going to be rendering
+          # There was no cache for ourselves, so we need to "unfold" our children
+          # to see whether those are cached instead
           @state.advance_to(:unfolding)
           @children = @node.children.map { |n| self.class.new(n) }
         end
@@ -127,6 +131,7 @@ class BreadthFirstRenderer
           child_render_node.collect_rendered_caches(into_hash)
         end
       end
+      # otherwise - do nothing
     end
 
     def render!
