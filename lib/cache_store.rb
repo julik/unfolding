@@ -1,8 +1,8 @@
 class CacheStore
   attr_reader :roundtrips
 
-  def initialize
-    @c = {}
+  def initialize(hashmap = nil)
+    @c = hashmap.to_h
     @roundtrips = 0
   end
 
