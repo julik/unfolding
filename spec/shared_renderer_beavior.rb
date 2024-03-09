@@ -24,15 +24,12 @@ RSpec.shared_examples "a renderer" do
     end
   end
 
-  it "provides same output as DepthFirstRenderer" do
-    skip("No point testing DepthFirstRenderer against itself") if subject.is_a?(DepthFirstRenderer)
+  it "should output the same fragments as a NaiveRenderer" do
+    next if subject.is_a?(NaiveRenderer)
 
-    cache1 = CacheStore.new
-    ref_output = DepthFirstRenderer.new.node_to_fragments(root_node, cache1)
+    ref_output = NaiveRenderer.new.node_to_fragments(root_node, _cache_store = nil)
 
-    cache2 = CacheStore.new
-    output = subject.node_to_fragments(root_node, cache2)
-
+    output = subject.node_to_fragments(root_node, CacheStore.new)
     expect(output).to eq(ref_output)
   end
 end

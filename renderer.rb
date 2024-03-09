@@ -1,5 +1,6 @@
 require_relative "lib/node"
 require_relative "lib/cache_store"
+require_relative "lib/naive_renderer"
 require_relative "lib/depth_first_renderer"
 require_relative "lib/batched_depth_first_renderer"
 require_relative "lib/breadth_first_renderer"
@@ -8,28 +9,13 @@ require_relative "lib/indented_print"
 def render_with(renderer)
   rng = Random.new(42)
   b = Node::Builder.new
-  root_node = b.node("Forum") do
-    b.node("Header")
-    b.node("Thread") do
-      b.node("Thread") do
-        b.node("Thread") do
-          320.times { b.node("Post") }
-        end
-        b.node("Thread") do
-          620.times { b.node("Post") }
-        end
-        b.node("Thread") do
-          640.times { b.node("Post") }
-        end
-        b.node("Thread") do
-          240.times do
-            b.node("Post") do
-              b.node("Avatar")
-            end
-          end
+  root_node = b.node("Level1") do
+    3.times do
+      b.node("Level2") do
+        3.times do
+          b.node("Level3")
         end
       end
-      b.node("Thread")
     end
   end
 
@@ -42,14 +28,14 @@ def render_with(renderer)
   }
   warn "== First render (cold cache) required #{r} roundtrips, cache state #{cache}"
 
-  cache.evict_matching(/^Forum/)
+  cache.evict_matching(/^Level1/)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
   warn "== Second render (warm cache) required #{r} roundtrips, cache state #{cache}"
 
   # Evict some keys
-  cache.evict_matching(/^Forum/)
+  cache.evict_matching(/^Level1/)
   cache.evict_ratio(0.5, random: rng)
 
   r = cache.measure {
@@ -67,6 +53,7 @@ def render_with(renderer)
 end
 
 if __FILE__ == $0
+  # render_with(NaiveRenderer.new)
   render_with(DepthFirstRenderer.new)
   render_with(BatchedDepthFirstRenderer.new)
   render_with(BreadthFirstRenderer.new)

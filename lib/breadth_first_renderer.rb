@@ -119,12 +119,14 @@ class BreadthFirstRenderer
 
     def collect_rendered_caches(into_hash)
       if @state.done?
+        debug "Collecting cache for self"
         into_hash[@node.cache_key] = @fragments.dup
       elsif @state.unfolding?
-        @children.map { |c| c.collect_rendered_caches(into_hash) }
+        debug "Collecting child caches"
+        @children.map do |child_render_node|
+          child_render_node.collect_rendered_caches(into_hash)
+        end
       end
-
-      nil
     end
 
     def render!
@@ -170,6 +172,7 @@ class BreadthFirstRenderer
 
       keys_to_values_for_cache = {}
       root_node.collect_rendered_caches(keys_to_values_for_cache)
+
       cache_store.write_multi(keys_to_values_for_cache) if keys_to_values_for_cache.any?
 
       return root_node.fragments if root_node.done?
