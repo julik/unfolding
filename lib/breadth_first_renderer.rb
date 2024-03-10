@@ -40,6 +40,7 @@ class BreadthFirstRenderer
     PERMITTED_TRANSITIONS = [
       [:in_progress, :rendered_from_cache],
       [:in_progress, :rendered_fresh],
+      [:rendered_fresh, :cache_written],
     ]
 
     def initialize
@@ -122,6 +123,7 @@ class BreadthFirstRenderer
       end
 
       if @rendering_state.done? && @cache_state.rendered_fresh?
+        @cache_state.advance_to(:cache_written)
         into_hash[@node.cache_key] = @fragments
       end
     end
