@@ -32,7 +32,7 @@ def render_with(renderer)
   r = cache.measure {
     renderer.node_to_fragments(root_node, cache)
   }
-  warn "== Second render (warm cache) required #{r} roundtrips, cache state #{cache}"
+  warn "== Second render (warm cache just without root node) required #{r} roundtrips, cache state #{cache}"
 
   # Evict some keys
   cache.evict_matching(/^Level1/)

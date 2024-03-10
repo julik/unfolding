@@ -79,22 +79,17 @@ class BreadthFirstRenderer
 
         debug "All children are done (or leaf node), rendering"
         render!
-      else
-        raise "Should not receive pushdown_values_from_cache() while #{@state}"
       end
     end
 
     def collect_rendered_caches(into_hash)
-      if @state.done?
-        debug "Collecting cache for self"
-        into_hash[@node.cache_key] = @fragments.dup
-      elsif @state.unfolding?
-        debug "Collecting child caches"
-        @children.map do |child_render_node|
-          child_render_node.collect_rendered_caches(into_hash)
-        end
-      end
-      # otherwise - do nothing
+      
+      # return unless @state.ready_to_cache?
+      # @children.map do |child_render_node|
+      #   child_render_node.collect_rendered_caches(into_hash)
+      # end
+      # into_hash[@node.cache_key] = @fragments.dup
+      # @state.advance_to(:done)
     end
 
     def render!
@@ -125,7 +120,7 @@ class BreadthFirstRenderer
     end
 
     def debug(str)
-      # warn "#{self}: #{str}"
+      warn "#{self}: #{str}"
     end
   end
 

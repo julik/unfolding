@@ -21,6 +21,13 @@ class Node
   attr_reader :name, :id, :children
   ID_DISPENCER = (0..).each
 
+  def self.build(name)
+    b = Builder.new
+    b.node(name) do
+      yield(b)
+    end
+  end
+
   def initialize(name, children = [])
     @name = name
     @id = ID_DISPENCER.next
