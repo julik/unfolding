@@ -4,8 +4,12 @@ class BreadthFirstRenderer
   # It is very easy to make a mistake with state transitions, so a good idea
   # is to have a state machine which answers to methods and also prevents incorrect
   # state transitions altogether
-  RenderNodeState = create_state_machine(:folded, [:folded, :unfolding], [:folded, :done], [:unfolding, :rendering], [:rendering, :done])
-  CacheNodeState = create_state_machine(:unknown, [:unknown, :cached], [:unknown, :rendered], [:rendered, :cached])
+  class RenderingState
+    PERMITTED_TRANSITIONS = [
+      [:folded, :unfolding],
+      [:folded, :done],
+      [:unfolding, :rendering],
+      [:rendering, :done]
     ]
 
     def initialize
@@ -32,9 +36,40 @@ class BreadthFirstRenderer
     end
   end
 
+  class CacheState
+    PERMITTED_TRANSITIONS = [
+      [:in_progress, :rendered_from_cache],
+      [:in_progress, :rendered_fresh],
+    ]
+
+    def initialize
+      @state = :in_progress
+    end
+
+    def advance_or_stay_in(state)
+      return if @state == state
+      advance_to(state)
+    end
+
+    def advance_to(state)
+      raise "Cannot transition #{@state} -> #{state}" unless PERMITTED_TRANSITIONS.include?([@state, state])
+      @state = state
+    end
+
+    def to_s
+      "S(#{@state.inspect})"
+    end
+
+    states = PERMITTED_TRANSITIONS.flatten.uniq
+    states.each do |state|
+      define_method(:"#{state}?") { @state == state }
+    end
+  end
+
   class RenderNode
     def initialize(node)
-      @state = RenderNodeState.new
+      @rendering_state = RenderingState.new
+      @cache_state = CacheState.new
       @node = node
       @children = nil
       @fragments = []
@@ -42,32 +77,33 @@ class BreadthFirstRenderer
     end
 
     def collect_dependent_cache_keys
-      if @state.folded?
+      if @rendering_state.folded?
         debug "Returning cache key for self"
         @node.cache_key
-      elsif @state.unfolding?
+      elsif @rendering_state.unfolding?
         debug "Still unfolding, returning dependent child keys"
         @children.map(&:collect_dependent_cache_keys)
       end
     end
 
     def pushdown_values_from_cache(value_from_cache)
-      if @state.done?
+      if @rendering_state.done?
         debug "Received cache values but already done"
-      elsif @state.folded?
+      elsif @rendering_state.folded?
         if value_from_cache
           debug "Сache hit (received #{value_from_cache.inspect})"
           @fragments = value_from_cache
           @did_return_cache = true
-          @state.advance_to(:done)
+          @rendering_state.advance_to(:done)
+          @cache_state.advance_to(:rendered_from_cache)
         else
           debug "Сache miss (received #{value_from_cache.inspect})"
           # There was no cache for ourselves, so we need to "unfold" our children
           # to see whether those are cached instead
-          @state.advance_to(:unfolding)
+          @rendering_state.advance_to(:unfolding)
           @children = @node.children.map { |n| self.class.new(n) }
         end
-      elsif @state.unfolding?
+      elsif @rendering_state.unfolding?
         debug "Received cache values for children: #{value_from_cache}"
 
         @children.zip(value_from_cache).each do |child_render_node, value_for_child|
@@ -85,14 +121,13 @@ class BreadthFirstRenderer
         child_render_node.collect_rendered_caches(into_hash)
       end
 
-      if @state.done? && !@did_return_cache
+      if @rendering_state.done? && @cache_state.rendered_fresh?
         into_hash[@node.cache_key] = @fragments
-        @did_return_cache = true
       end
     end
 
     def render!
-      @state.advance_to(:rendering)
+      @rendering_state.advance_to(:rendering)
       @fragments = if @children.any?
         [
           "<#{@node.name} id=#{@node.id}>",
@@ -102,20 +137,21 @@ class BreadthFirstRenderer
       else
         ["<#{@node.name} id=#{@node.id} />"]
       end
-      @state.advance_to(:done)
+      @cache_state.advance_to(:rendered_fresh)
+      @rendering_state.advance_to(:done)
     end
 
     def fragments
-      raise "Fragments not available yet (still #{@state})" unless @state.done?
+      raise "Fragments not available yet (still #{@rendering_state})" unless @rendering_state.done?
       @fragments
     end
 
     def done?
-      @state.done?
+      @rendering_state.done?
     end
 
     def to_s
-      "RN(#{@node.cache_key} #{@state}):>"
+      "RN(#{@node.cache_key} #{@rendering_state}):>"
     end
 
     def debug(str)
