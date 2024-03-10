@@ -1,16 +1,11 @@
 require "set"
 
 class BreadthFirstRenderer
-
   # It is very easy to make a mistake with state transitions, so a good idea
   # is to have a state machine which answers to methods and also prevents incorrect
   # state transitions altogether
-  class RenderNodeState
-    PERMITTED_TRANSITIONS = [
-      [:folded, :unfolding],
-      [:folded, :done],
-      [:unfolding, :rendering],
-      [:rendering, :done]
+  RenderNodeState = create_state_machine(:folded, [:folded, :unfolding], [:folded, :done], [:unfolding, :rendering], [:rendering, :done])
+  CacheNodeState = create_state_machine(:unknown, [:unknown, :cached], [:unknown, :rendered], [:rendered, :cached])
     ]
 
     def initialize
