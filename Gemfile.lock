@@ -21,6 +21,7 @@ PLATFORMS
 
 DEPENDENCIES
   rspec
+  rspec-mocks
 
 BUNDLED WITH
    2.4.17

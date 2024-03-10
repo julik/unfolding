@@ -1,6 +1,7 @@
 require "set"
 
 class BreadthFirstRenderer
+
   # It is very easy to make a mistake with state transitions, so a good idea
   # is to have a state machine which answers to methods and also prevents incorrect
   # state transitions altogether
@@ -42,6 +43,7 @@ class BreadthFirstRenderer
       @node = node
       @children = nil
       @fragments = []
+      @did_return_cache = false
     end
 
     def collect_dependent_cache_keys
@@ -61,6 +63,7 @@ class BreadthFirstRenderer
         if value_from_cache
           debug "Сache hit (received #{value_from_cache.inspect})"
           @fragments = value_from_cache
+          @did_return_cache = true
           @state.advance_to(:done)
         else
           debug "Сache miss (received #{value_from_cache.inspect})"
@@ -83,13 +86,14 @@ class BreadthFirstRenderer
     end
 
     def collect_rendered_caches(into_hash)
-      
-      # return unless @state.ready_to_cache?
-      # @children.map do |child_render_node|
-      #   child_render_node.collect_rendered_caches(into_hash)
-      # end
-      # into_hash[@node.cache_key] = @fragments.dup
-      # @state.advance_to(:done)
+      (@children || []).each do |child_render_node|
+        child_render_node.collect_rendered_caches(into_hash)
+      end
+
+      if @state.done? && !@did_return_cache
+        into_hash[@node.cache_key] = @fragments
+        @did_return_cache = true
+      end
     end
 
     def render!
@@ -120,7 +124,7 @@ class BreadthFirstRenderer
     end
 
     def debug(str)
-      warn "#{self}: #{str}"
+      # warn "#{self}: #{str}"
     end
   end
 
@@ -143,9 +147,14 @@ class BreadthFirstRenderer
 
   def hydrate(tree_of_keys_and_nils, using_cache_store)
     # Converts a tree of [nil, "k1", ["k2", nil]] to ["k1", "k2"]
-    cache_keys = collect_keys(tree_of_keys_and_nils)
+    cache_keys_to_read = collect_keys(tree_of_keys_and_nils)
+
+    # A cache store likely won't like an empty array of keys
+    return with_replacements_from(tree_of_keys_and_nils, []) if cache_keys_to_read.empty?
+
     # Retrieves cached data for ["k1", "k2"], which will be ["data1", nil] (nil if cache miss)
-    cached_values = using_cache_store.read_multi(cache_keys)
+    cached_values = using_cache_store.read_multi(cache_keys_to_read)
+
     # Merges ["data1", nil] into [nil, "k1", ["k2", nil]] to return a tree of [nil, "data1", [nil, nil]]
     with_replacements_from(tree_of_keys_and_nils, cached_values)
   end

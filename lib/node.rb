@@ -34,11 +34,7 @@ class Node
     @children = children
   end
 
-  def self.gen_n(n, name)
-    n.times.map { new(name) }
-  end
-
   def cache_key
-    "#{@name}/#{@id}"
+    "#{@name}-#{@id}"
   end
 end
