@@ -12,7 +12,6 @@ class CacheStore
   end
 
   def read_multi(keys)
-    warn "Reading #{keys.inspect}"
     @roundtrips += 1
     keys.map { |k| @c[k] }
   end
@@ -23,7 +22,6 @@ class CacheStore
   end
 
   def write_multi(keys_to_values)
-    warn "Writing #{keys_to_values.keys.inspect}"
     @roundtrips += 1
     keys_to_values.each_pair do |k, v|
       @c[k] = v
@@ -35,8 +33,10 @@ class CacheStore
     @c.keys.sample(n_keys, random: random).each { |k| @c.delete(k) }
   end
 
-  def evict_matching(pattern)
-    @c.keys.grep(pattern).each { |k| @c.delete(k) }
+  def evict_matching(*patterns_or_strings)
+    patterns_or_strings.each do |pattern|
+      @c.keys.grep(pattern).each { |k| @c.delete(k) }
+    end
   end
 
   def measure

@@ -33,12 +33,8 @@ RSpec.shared_examples "a renderer" do
     expect(output).to eq(ref_output)
   end
 
-  before :each do
-    Node::ID_DISPENCER = (0..).each
-  end
-
   it "renders a single node" do
-    node = Node.new("Root")
+    node = Node.build("Root")
     fragments = subject.node_to_fragments(node, CacheStore.new)
     expect(fragments).to eq(["<Root id=0 />"])
   end

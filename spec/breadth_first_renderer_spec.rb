@@ -37,9 +37,28 @@ RSpec.describe BreadthFirstRenderer do
     multi_read_args.each do |args|
       expect(store).to receive(:read_multi).with(args).and_call_original
     end
-
     multi_write_args = [
       hash_including("Child-0", "Child-1", "Child-2", "Parent-3", "Child-4", "Child-5", "Child-6", "AnotherParent-7", "Root-8")
+    ]
+    multi_write_args.each do |args|
+      expect(store).to receive(:write_multi).with(args).and_call_original
+    end
+
+    subject.node_to_fragments(root_node, store)
+
+    # Zap "Root" and the first "Parent". These nodes will be re-written into the cache
+    store.evict_matching("Root-8", "Parent-3")
+
+    multi_read_args = [
+      ["Root-8"],
+      ["Parent-3", "AnotherParent-7"],
+      ["Child-0", "Child-1", "Child-2"]
+    ]
+    multi_read_args.each do |args|
+      expect(store).to receive(:read_multi).with(args).and_call_original
+    end
+    multi_write_args = [
+      hash_including_only("Parent-3", "Root-8")
     ]
     multi_write_args.each do |args|
       expect(store).to receive(:write_multi).with(args).and_call_original
