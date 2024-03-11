@@ -7,3 +7,10 @@ RSpec::Matchers.matcher :hash_including_only do |*keys|
     Set.new(actual_hash.keys) == Set.new(keys)
   end
 end
+
+RSpec::Matchers.matcher :be_same_set do |*ref_items|
+  match do |actual_items|
+    Set.new(actual_items) == Set.new(ref_items)
+  end
+  diffable
+end

@@ -33,6 +33,14 @@ RSpec.shared_examples "a renderer" do
     expect(output).to eq(ref_output)
   end
 
+  it "should cache fragments for every node" do
+    next if subject.is_a?(NaiveRenderer)
+
+    cache_store = CacheStore.new
+    subject.node_to_fragments(root_node, cache_store)
+    expect(cache_store.keys).to be_same_set("Child-0", "Grandchild-1", "Grandgrandchild-2", "Grandchild-3", "Grandchild-4", "Child-5", "Root-6")
+  end
+
   it "renders a single node" do
     node = Node.build("Root")
     fragments = subject.node_to_fragments(node, CacheStore.new)

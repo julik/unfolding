@@ -59,5 +59,9 @@ class CacheStore
     "<CacheStore with #{@c.length} keys>"
   end
 
+  def keys
+    @c.keys
+  end
+
   alias_method :to_s, :inspect
 end
