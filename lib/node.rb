@@ -12,7 +12,7 @@ class Node
     def node(name)
       previous_children, @children = @children, []
       yield if block_given?
-      Node.new(name, @children, id_generator: @ids).tap do |this_node|
+      Node.new(name, @children, id: @ids.next).tap do |this_node|
         previous_children << this_node
         @children = previous_children
       end
@@ -28,9 +28,9 @@ class Node
     end
   end
 
-  def initialize(name, children = [], id_generator: DEFAULT_ID_GENERATOR)
+  def initialize(name, children = [], id:)
     @name = name
-    @id = id_generator.next
+    @id = id
     @children = children
   end
 
