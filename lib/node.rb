@@ -1,5 +1,3 @@
-require "base64"
-
 class Node
   DEFAULT_ID_GENERATOR = (0..).each
 
