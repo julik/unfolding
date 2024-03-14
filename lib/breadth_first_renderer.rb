@@ -98,6 +98,9 @@ class BreadthFirstRenderer
         @children.zip(value_from_cache).each do |child_render_node, value_for_child|
           child_render_node.pushdown_values_from_cache(value_for_child)
         end
+        # This will allow children to deliver their cache keys into collect_rendered_caches
+        # at this iteration of the loop. This can be optimized further by calling `render!`
+        # immediately here
         @rendering_state.advance_to(:rendering) if @children.all?(&:done?)
       elsif @rendering_state.rendering?
         render!
