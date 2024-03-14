@@ -74,45 +74,32 @@ class BreadthFirstRenderer
       @node = node
       @children = nil
       @fragments = []
-      @did_return_cache = false
     end
 
     def collect_dependent_cache_keys
       if @rendering_state.folded?
-        debug "Returning cache key for self"
         @node.cache_key
       elsif @rendering_state.unfolding?
-        debug "Still unfolding, returning dependent child keys"
         @children.map(&:collect_dependent_cache_keys)
       end
     end
 
     def pushdown_values_from_cache(value_from_cache)
-      if @rendering_state.done?
-        debug "Received cache values but already done"
+      if @rendering_state.folded? && value_from_cache
+        @fragments = value_from_cache
+        @rendering_state.advance_to(:done)
+        @cache_state.advance_to(:rendered_from_cache)
       elsif @rendering_state.folded?
-        if value_from_cache
-          debug "Сache hit (received #{value_from_cache.inspect})"
-          @fragments = value_from_cache
-          @did_return_cache = true
-          @rendering_state.advance_to(:done)
-          @cache_state.advance_to(:rendered_from_cache)
-        else
-          debug "Сache miss (received #{value_from_cache.inspect})"
-          # There was no cache for ourselves, so we need to "unfold" our children
-          # to see whether those are cached instead
-          @rendering_state.advance_to(:unfolding)
-          @children = @node.children.map { |n| self.class.new(n) }
-        end
+        # There was no cache for ourselves, so we need to "unfold" our children
+        # to see whether those are cached instead
+        @rendering_state.advance_to(:unfolding)
+        @children = @node.children.map { |n| self.class.new(n) }
       elsif @rendering_state.unfolding?
-        debug "Received cache values for children: #{value_from_cache}"
-
         @children.zip(value_from_cache).each do |child_render_node, value_for_child|
           child_render_node.pushdown_values_from_cache(value_for_child)
         end
-        return unless @children.all?(&:done?)
-
-        debug "All children are done (or leaf node), rendering"
+        @rendering_state.advance_to(:rendering) if @children.all?(&:done?)
+      elsif @rendering_state.rendering?
         render!
       end
     end
@@ -129,7 +116,6 @@ class BreadthFirstRenderer
     end
 
     def render!
-      @rendering_state.advance_to(:rendering)
       @fragments = if @children.any?
         [
           "<#{@node.name} id=#{@node.id}>",
@@ -154,10 +140,6 @@ class BreadthFirstRenderer
 
     def to_s
       "RN(#{@node.cache_key} #{@rendering_state}):>"
-    end
-
-    def debug(str)
-      # warn "#{self}: #{str}"
     end
   end
 
